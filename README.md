@@ -2,7 +2,9 @@
 
 A desktop CSV flashcard review and editing tool built with Python and Tkinter. The app lets you load flashcards from a CSV file, review questions one by one, reveal or hide answers, edit cards, insert new cards, delete cards, save changes, and attach images to flashcard questions or answers.
 
-![App icon](Python/icon/original_image_GPT.png)
+<p align="center">
+  <img src="Python/icon/original_image_GPT.png" alt="App icon" width="220">
+</p>
 
 ## Table of Contents
 
