@@ -2,6 +2,10 @@
 """
 Flashcard Reviewer — CSV-based study tool
 CSV format: Question, Answer, Difficulty, Topic
+
+Images: Ctrl+V en el editor pega imágenes del portapapeles.
+        Se guardan como PNG en {csv}_media/ y se referencian
+        como [[img:archivo.png]] en los campos Question/Answer.
 """
 
 import csv
@@ -17,24 +21,6 @@ try:
     PIL_AVAILABLE = True
 except ImportError:
     PIL_AVAILABLE = False
-
-# ─────────────────────────────────────────────
-#  Image tag helpers
-# ─────────────────────────────────────────────
-IMG_TAG_RE = re.compile(r'\[\[img:([^\]]+)\]\]')
-
-
-def parse_rich(text: str) -> list:
-    """Return list of ('text', str) | ('img', filename) chunks."""
-    result, last = [], 0
-    for m in IMG_TAG_RE.finditer(text):
-        if m.start() > last:
-            result.append(('text', text[last:m.start()]))
-        result.append(('img', m.group(1)))
-        last = m.end()
-    if last < len(text):
-        result.append(('text', text[last:]))
-    return result or [('text', text)]
 
 # ─────────────────────────────────────────────
 #  Palette
@@ -53,8 +39,8 @@ BTN_BG      = "#252535"
 BTN_HOVER   = "#2e2e46"
 WHITE       = "#ffffff"
 
-DIFFICULTIES = ["Basic", "Intermediate", "Advanced"]
-DIFF_COLORS  = {"Basic": SUCCESS, "Intermediate": WARNING, "Advanced": DANGER}
+DIFFICULTIES = ["Basic", "Intermediate", "Difficult"]
+DIFF_COLORS  = {"Basic": SUCCESS, "Intermediate": WARNING, "Difficult": DANGER}
 
 FONT_TITLE   = ("Georgia", 13, "bold")
 FONT_CARD_Q  = ("Georgia", 18, "bold")
@@ -63,6 +49,24 @@ FONT_META    = ("Courier New", 10)
 FONT_BTN     = ("Courier New", 10, "bold")
 FONT_COUNTER = ("Courier New", 11)
 FONT_LABEL   = ("Courier New", 10)
+
+# ─────────────────────────────────────────────
+#  Image tag helpers
+# ─────────────────────────────────────────────
+IMG_TAG_RE = re.compile(r'\[\[img:([^\]]+)\]\]')
+
+
+def parse_rich(text: str) -> list:
+    """Split text into ('text', str) | ('img', filename) chunks."""
+    result, last = [], 0
+    for m in IMG_TAG_RE.finditer(text):
+        if m.start() > last:
+            result.append(('text', text[last:m.start()]))
+        result.append(('img', m.group(1)))
+        last = m.end()
+    if last < len(text):
+        result.append(('text', text[last:]))
+    return result or [('text', text)]
 
 
 # ─────────────────────────────────────────────
@@ -106,7 +110,7 @@ class CardDialog(tk.Toplevel):
         pad = {"padx": 16, "pady": 6}
 
         def field_header(label_text, widget_ref_fn):
-            """Label on left, optional paste-image button on right."""
+            """Label a la izquierda; botón de pegar imagen a la derecha."""
             hdr = tk.Frame(self, bg=BG)
             hdr.pack(fill="x", padx=16, pady=(14, 0))
             tk.Label(hdr, text=label_text, bg=BG, fg=MUTED,
@@ -142,7 +146,7 @@ class CardDialog(tk.Toplevel):
         field_header("ANSWER", lambda: self.a_text)
         self.a_text.pack(padx=16, pady=6)
 
-        # Bind Ctrl/Cmd+V to image-aware paste on both fields
+        # Ctrl/Cmd+V → imagen si procede, texto normal si no
         if PIL_AVAILABLE:
             for w in (self.q_text, self.a_text):
                 w.bind("<Control-v>", lambda e, _w=w: self._on_paste(e, _w))
@@ -154,18 +158,15 @@ class CardDialog(tk.Toplevel):
 
         diff_frame = tk.Frame(row, bg=BG)
         diff_frame.pack(side="left", padx=(0, 20))
-        lbl2 = tk.Label(diff_frame, text="DIFFICULTY", bg=BG, fg=MUTED, font=FONT_LABEL)
-        lbl2.pack(anchor="w")
+        tk.Label(diff_frame, text="DIFFICULTY", bg=BG, fg=MUTED, font=FONT_LABEL).pack(anchor="w")
         self.diff_var = tk.StringVar(value="Intermediate")
-        diff_menu = ttk.Combobox(diff_frame, textvariable=self.diff_var,
-                                 values=DIFFICULTIES, state="readonly", width=12,
-                                 font=FONT_LABEL)
-        diff_menu.pack()
+        ttk.Combobox(diff_frame, textvariable=self.diff_var,
+                     values=DIFFICULTIES, state="readonly", width=12,
+                     font=FONT_LABEL).pack()
 
         topic_frame = tk.Frame(row, bg=BG)
         topic_frame.pack(side="left", fill="x", expand=True)
-        lbl3 = tk.Label(topic_frame, text="TOPIC", bg=BG, fg=MUTED, font=FONT_LABEL)
-        lbl3.pack(anchor="w")
+        tk.Label(topic_frame, text="TOPIC", bg=BG, fg=MUTED, font=FONT_LABEL).pack(anchor="w")
         self.topic_entry = tk.Entry(topic_frame, bg=CARD_BG, fg=TEXT,
                                     insertbackground=TEXT, font=("Georgia", 12),
                                     relief="flat", width=28,
@@ -178,19 +179,17 @@ class CardDialog(tk.Toplevel):
         btn_row = tk.Frame(self, bg=BG)
         btn_row.pack(fill="x", padx=16, pady=(12, 16))
 
-        cancel_btn = tk.Button(btn_row, text="CANCEL", command=self.destroy,
-                               bg=BTN_BG, fg=MUTED, font=FONT_BTN,
-                               relief="flat", padx=16, pady=6, cursor="hand2",
-                               activebackground=BTN_HOVER, activeforeground=TEXT,
-                               bd=0)
-        cancel_btn.pack(side="right", padx=(8, 0))
+        tk.Button(btn_row, text="CANCEL", command=self.destroy,
+                  bg=BTN_BG, fg=MUTED, font=FONT_BTN,
+                  relief="flat", padx=16, pady=6, cursor="hand2",
+                  activebackground=BTN_HOVER, activeforeground=TEXT,
+                  bd=0).pack(side="right", padx=(8, 0))
 
-        save_btn = tk.Button(btn_row, text="SAVE", command=self._save,
-                             bg=ACCENT, fg=WHITE, font=FONT_BTN,
-                             relief="flat", padx=24, pady=6, cursor="hand2",
-                             activebackground=ACCENT2, activeforeground=WHITE,
-                             bd=0)
-        save_btn.pack(side="right")
+        tk.Button(btn_row, text="SAVE", command=self._save,
+                  bg=ACCENT, fg=WHITE, font=FONT_BTN,
+                  relief="flat", padx=24, pady=6, cursor="hand2",
+                  activebackground=ACCENT2, activeforeground=WHITE,
+                  bd=0).pack(side="right")
 
         # ── Prefill ──
         if card:
@@ -205,18 +204,14 @@ class CardDialog(tk.Toplevel):
         style = ttk.Style(self)
         style.theme_use("clam")
         style.configure("TCombobox",
-                        fieldbackground=CARD_BG,
-                        background=CARD_BG,
-                        foreground=TEXT,
-                        selectbackground=ACCENT,
-                        selectforeground=WHITE,
-                        bordercolor=CARD_BORDER,
+                        fieldbackground=CARD_BG, background=CARD_BG,
+                        foreground=TEXT, selectbackground=ACCENT,
+                        selectforeground=WHITE, bordercolor=CARD_BORDER,
                         arrowcolor=ACCENT)
 
         self.q_text.focus_set()
         self.bind("<Escape>", lambda e: self.destroy())
 
-        # Center on parent
         self.update_idletasks()
         px = parent.winfo_rootx() + (parent.winfo_width() - self.winfo_width()) // 2
         py = parent.winfo_rooty() + (parent.winfo_height() - self.winfo_height()) // 2
@@ -224,19 +219,19 @@ class CardDialog(tk.Toplevel):
 
     # ── Image paste ────────────────────────────
     def _on_paste(self, event, widget):
-        """Intercept Ctrl+V: consume the event only if clipboard holds an image."""
+        """Si el portapapeles tiene imagen la pega; si no, deja el comportamiento normal."""
         if self._paste_image(widget):
-            return "break"  # prevent default text paste
+            return "break"
 
     def _paste_image(self, widget) -> bool:
-        """Grab image from clipboard, save to media_dir, insert [[img:...]] tag."""
+        """Guarda la imagen del portapapeles en media_dir e inserta el tag [[img:...]]."""
         if not PIL_AVAILABLE:
             return False
         if not self.media_dir:
             messagebox.showwarning(
                 "Sin CSV guardado",
                 "Para pegar imágenes primero guarda el CSV.\n"
-                "Las imágenes se guardan junto al archivo CSV.",
+                "Las imágenes se almacenan junto al archivo CSV.",
                 parent=self,
             )
             return False
@@ -244,7 +239,7 @@ class CardDialog(tk.Toplevel):
             clip = ImageGrab.grabclipboard()
             if clip is None:
                 return False
-            # On some platforms grabclipboard() returns a list of file paths
+            # En algunos sistemas grabclipboard() devuelve lista de rutas
             if isinstance(clip, list):
                 for p in clip:
                     if os.path.isfile(p):
@@ -298,7 +293,8 @@ class FlashcardApp(tk.Tk):
         self.csv_path: str | None = None
         self._media_dir: str | None = None
         self._unsaved: bool = False
-        self._photo_refs: list = []  # prevent PhotoImage GC
+        self._photo_refs: list = []          # evita que GC destruya PhotoImages
+        self.auto_show_var = tk.BooleanVar(value=False)
 
         self._build_ui()
         self._show_empty_state()
@@ -313,9 +309,8 @@ class FlashcardApp(tk.Tk):
         topbar = tk.Frame(self, bg=BG, pady=0)
         topbar.pack(fill="x", padx=24, pady=(18, 0))
 
-        title_lbl = tk.Label(topbar, text="✦ FLASHCARD REVIEWER",
-                              bg=BG, fg=ACCENT2, font=FONT_TITLE)
-        title_lbl.pack(side="left")
+        tk.Label(topbar, text="✦ FLASHCARD REVIEWER",
+                 bg=BG, fg=ACCENT2, font=FONT_TITLE).pack(side="left")
 
         self.save_btn = tk.Button(topbar, text="💾  GUARDAR CSV",
                                    command=self._save_csv,
@@ -325,20 +320,34 @@ class FlashcardApp(tk.Tk):
                                    activebackground=BTN_HOVER, activeforeground=TEXT)
         self.save_btn.pack(side="right", padx=(8, 0))
 
-        load_btn = tk.Button(topbar, text="📂  CARGAR CSV",
-                              command=self._load_csv,
-                              bg=ACCENT, fg=WHITE, font=FONT_BTN,
-                              relief="flat", padx=12, pady=4,
-                              cursor="hand2", bd=0,
-                              activebackground=ACCENT2, activeforeground=WHITE)
-        load_btn.pack(side="right")
+        tk.Button(topbar, text="📂  CARGAR CSV",
+                  command=self._load_csv,
+                  bg=ACCENT, fg=WHITE, font=FONT_BTN,
+                  relief="flat", padx=12, pady=4,
+                  cursor="hand2", bd=0,
+                  activebackground=ACCENT2, activeforeground=WHITE).pack(side="right")
 
-        # ── Counter + topic row ──
+        # ── Counter + checkbox + topic row ──
         meta_row = tk.Frame(self, bg=BG)
         meta_row.pack(fill="x", padx=24, pady=(10, 0))
 
         self.counter_lbl = tk.Label(meta_row, text="", bg=BG, fg=MUTED, font=FONT_COUNTER)
         self.counter_lbl.pack(side="left")
+
+        # Auto-show checkbox
+        tk.Checkbutton(
+            meta_row,
+            text="Mostrar respuesta automáticamente",
+            variable=self.auto_show_var,
+            command=self._on_auto_show_toggle,
+            bg=BG, fg=MUTED,
+            selectcolor=BTN_BG,
+            activebackground=BG,
+            activeforeground=ACCENT2,
+            font=FONT_META,
+            cursor="hand2",
+            relief="flat", bd=0,
+        ).pack(side="left", padx=(20, 0))
 
         self.diff_lbl = tk.Label(meta_row, text="", bg=BG, fg=WARNING, font=FONT_META)
         self.diff_lbl.pack(side="right", padx=(0, 4))
@@ -347,8 +356,7 @@ class FlashcardApp(tk.Tk):
         self.topic_lbl.pack(side="right", padx=(0, 16))
 
         # ── Progress bar ──
-        self.progress_canvas = tk.Canvas(self, bg=BG, height=3,
-                                          highlightthickness=0)
+        self.progress_canvas = tk.Canvas(self, bg=BG, height=3, highlightthickness=0)
         self.progress_canvas.pack(fill="x", padx=24, pady=(6, 0))
 
         # ── Card ──
@@ -357,51 +365,42 @@ class FlashcardApp(tk.Tk):
                                     highlightbackground=CARD_BORDER)
         self.card_frame.pack(fill="both", expand=True, padx=24, pady=14)
 
-        # Question section
-        q_header = tk.Label(self.card_frame, text="PREGUNTA",
-                             bg=CARD_BG, fg=MUTED, font=FONT_META, anchor="w")
-        q_header.pack(fill="x", padx=20, pady=(20, 4))
+        # Question
+        tk.Label(self.card_frame, text="PREGUNTA",
+                 bg=CARD_BG, fg=MUTED, font=FONT_META, anchor="w"
+                 ).pack(fill="x", padx=20, pady=(20, 4))
 
         self.q_display = tk.Text(
             self.card_frame,
             bg=CARD_BG, fg=TEXT,
             font=FONT_CARD_Q,
-            relief="flat", bd=0,
-            highlightthickness=0,
-            wrap="word",
-            cursor="arrow",
-            padx=0, pady=0,
-            spacing1=2, spacing2=4,
-            height=4,
-            state="disabled",
+            relief="flat", bd=0, highlightthickness=0,
+            wrap="word", cursor="arrow",
+            padx=0, pady=0, spacing1=2, spacing2=4,
+            height=4, state="disabled",
         )
         self.q_display.pack(fill="x", padx=20, pady=(0, 12))
 
         # Divider
-        self.divider = tk.Frame(self.card_frame, bg=CARD_BORDER, height=1)
-        self.divider.pack(fill="x", padx=20, pady=0)
+        tk.Frame(self.card_frame, bg=CARD_BORDER, height=1).pack(fill="x", padx=20)
 
-        # Answer section
-        a_header = tk.Label(self.card_frame, text="RESPUESTA",
-                             bg=CARD_BG, fg=MUTED, font=FONT_META, anchor="w")
-        a_header.pack(fill="x", padx=20, pady=(12, 4))
+        # Answer
+        tk.Label(self.card_frame, text="RESPUESTA",
+                 bg=CARD_BG, fg=MUTED, font=FONT_META, anchor="w"
+                 ).pack(fill="x", padx=20, pady=(12, 4))
 
         self.a_display = tk.Text(
             self.card_frame,
             bg=CARD_BG, fg=SUCCESS,
             font=FONT_CARD_A,
-            relief="flat", bd=0,
-            highlightthickness=0,
-            wrap="word",
-            cursor="arrow",
-            padx=0, pady=0,
-            spacing1=2, spacing2=4,
-            height=5,
-            state="disabled",
+            relief="flat", bd=0, highlightthickness=0,
+            wrap="word", cursor="arrow",
+            padx=0, pady=0, spacing1=2, spacing2=4,
+            height=5, state="disabled",
         )
         self.a_display.pack(fill="both", expand=True, padx=20, pady=(0, 8))
 
-        # Show/hide answer button
+        # Toggle button
         self.toggle_btn = tk.Button(self.card_frame, text="👁  VER RESPUESTA  [Space]",
                                      command=self._toggle_answer,
                                      bg=CARD_BG, fg=ACCENT2, font=FONT_BTN,
@@ -414,49 +413,32 @@ class FlashcardApp(tk.Tk):
         toolbar.pack(fill="x", padx=24, pady=(0, 18))
 
         def mk_btn(parent, text, cmd, fg=TEXT, bg=BTN_BG):
-            b = tk.Button(parent, text=text, command=cmd,
-                          bg=bg, fg=fg, font=FONT_BTN,
-                          relief="flat", padx=12, pady=6,
-                          cursor="hand2", bd=0,
-                          activebackground=BTN_HOVER, activeforeground=TEXT)
-            return b
+            return tk.Button(parent, text=text, command=cmd,
+                             bg=bg, fg=fg, font=FONT_BTN,
+                             relief="flat", padx=12, pady=6,
+                             cursor="hand2", bd=0,
+                             activebackground=BTN_HOVER, activeforeground=TEXT)
 
-        # Left nav
         nav_left = tk.Frame(toolbar, bg=BG)
         nav_left.pack(side="left")
-
         self.prev_btn = mk_btn(nav_left, "◀  ANTERIOR", lambda: self._navigate(-1))
         self.prev_btn.pack(side="left", padx=(0, 4))
-
         self.next_btn = mk_btn(nav_left, "SIGUIENTE  ▶", lambda: self._navigate(1))
         self.next_btn.pack(side="left")
 
-        # Right actions
         nav_right = tk.Frame(toolbar, bg=BG)
         nav_right.pack(side="right")
-
-        mk_btn(nav_right, "＋ ANTES",  self._add_before).pack(side="left", padx=(0, 4))
+        mk_btn(nav_right, "＋ ANTES",   self._add_before).pack(side="left", padx=(0, 4))
         mk_btn(nav_right, "＋ DESPUÉS", self._add_after).pack(side="left", padx=(0, 4))
         mk_btn(nav_right, "✎  EDITAR",  self._edit_current).pack(side="left", padx=(0, 4))
-        mk_btn(nav_right, "✕  ELIMINAR", self._delete_current,
-               fg=DANGER).pack(side="left")
-
-    # ── Empty / Welcome state ──────────────────
-    def _show_empty_state(self):
-        self._render_rich(self.q_display, "Carga un CSV para empezar ✦", TEXT)
-        self._render_rich(self.a_display, "", SUCCESS)
-        self.counter_lbl.config(text="")
-        self.topic_lbl.config(text="")
-        self.diff_lbl.config(text="")
-        self.toggle_btn.pack_forget()
-        self._draw_progress(0)
+        mk_btn(nav_right, "✕  ELIMINAR", self._delete_current, fg=DANGER).pack(side="left")
 
     # ── Rich content rendering ─────────────────
     def _media_dir_for(self, csv_path: str) -> str:
         return os.path.splitext(csv_path)[0] + "_media"
 
     def _render_rich(self, widget: tk.Text, content: str, base_color: str):
-        """Render text + [[img:filename]] chunks into a read-only tk.Text widget."""
+        """Inserta texto e imágenes ([[img:...]]) en un widget tk.Text de solo lectura."""
         widget.config(state="normal")
         widget.delete("1.0", "end")
         widget.tag_configure("txt", foreground=base_color, font=widget["font"])
@@ -489,6 +471,16 @@ class FlashcardApp(tk.Tk):
                     widget.insert("end", f" [error al cargar imagen: {exc}] ", "txt")
 
         widget.config(state="disabled")
+
+    # ── Empty / Welcome state ──────────────────
+    def _show_empty_state(self):
+        self._render_rich(self.q_display, "Carga un CSV para empezar ✦", TEXT)
+        self._render_rich(self.a_display, "", SUCCESS)
+        self.counter_lbl.config(text="")
+        self.topic_lbl.config(text="")
+        self.diff_lbl.config(text="")
+        self.toggle_btn.pack_forget()
+        self._draw_progress(0)
 
     # ── CSV I/O ────────────────────────────────
     def _load_csv(self):
@@ -545,6 +537,7 @@ class FlashcardApp(tk.Tk):
             self._show_empty_state()
             return
 
+        self._photo_refs.clear()
         card = self.cards[self.index]
         total = len(self.cards)
         n = self.index + 1
@@ -552,20 +545,22 @@ class FlashcardApp(tk.Tk):
         self.counter_lbl.config(text=f"{n} / {total}")
         self.topic_lbl.config(text=card.get("Topic") or "Sin tema")
 
-        diff = card.get("Difficulty", "Medium")
-        self.diff_lbl.config(text=f"● {diff}",
-                              fg=DIFF_COLORS.get(diff, WARNING))
+        diff = card.get("Difficulty", "Intermediate")
+        self.diff_lbl.config(text=f"● {diff}", fg=DIFF_COLORS.get(diff, WARNING))
 
-        self._photo_refs.clear()
         self._render_rich(self.q_display, card["Question"], TEXT)
 
-        # Reset answer visibility
-        self.answer_visible = False
-        self._render_rich(self.a_display, "", SUCCESS)
-        self.toggle_btn.config(text="👁  VER RESPUESTA  [Space]")
+        # Respuesta: auto-show o hidden según checkbox
+        if self.auto_show_var.get():
+            self.answer_visible = True
+            self._render_rich(self.a_display, card["Answer"], SUCCESS)
+            self.toggle_btn.config(text="🙈  OCULTAR RESPUESTA  [Space]")
+        else:
+            self.answer_visible = False
+            self._render_rich(self.a_display, "", SUCCESS)
+            self.toggle_btn.config(text="👁  VER RESPUESTA  [Space]")
         self.toggle_btn.pack(pady=(0, 12))
 
-        # Nav button states
         self.prev_btn.config(state="normal" if self.index > 0 else "disabled",
                               fg=TEXT if self.index > 0 else MUTED)
         self.next_btn.config(state="normal" if self.index < total - 1 else "disabled",
@@ -579,9 +574,8 @@ class FlashcardApp(tk.Tk):
         self.progress_canvas.delete("all")
         self.progress_canvas.create_rectangle(0, 0, w, 3, fill=CARD_BORDER, outline="")
         if ratio > 0:
-            self.progress_canvas.create_rectangle(
-                0, 0, int(w * ratio), 3, fill=ACCENT, outline=""
-            )
+            self.progress_canvas.create_rectangle(0, 0, int(w * ratio), 3,
+                                                   fill=ACCENT, outline="")
 
     # ── Interactions ───────────────────────────
     def _toggle_answer(self):
@@ -663,6 +657,19 @@ class FlashcardApp(tk.Tk):
             self.index = max(0, len(self.cards) - 1)
         self._mark_unsaved()
         self._render()
+
+    def _on_auto_show_toggle(self):
+        """Actualiza la tarjeta actual al momento de cambiar el checkbox."""
+        if self.cards:
+            card = self.cards[self.index]
+            if self.auto_show_var.get():
+                self.answer_visible = True
+                self._render_rich(self.a_display, card["Answer"], SUCCESS)
+                self.toggle_btn.config(text="🙈  OCULTAR RESPUESTA  [Space]")
+            else:
+                self.answer_visible = False
+                self._render_rich(self.a_display, "", SUCCESS)
+                self.toggle_btn.config(text="👁  VER RESPUESTA  [Space]")
 
     def _mark_unsaved(self):
         self._unsaved = True
