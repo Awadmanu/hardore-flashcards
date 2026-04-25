@@ -247,7 +247,7 @@ Make sure `claude_image_flashcards.py` is in the same folder as `build_windows.b
 
 ## Disclaimer
 
-This project was created with the assistance of generative AI models. Specifically, ChatGPT and Claude were used during the development and documentation process.
+This project was created with the assistance of generative AI models. Specifically, Copilot, ChatGPT and Claude were used during the development and documentation process.
 
 ## Contributors
 
