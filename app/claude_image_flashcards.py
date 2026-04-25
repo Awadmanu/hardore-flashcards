@@ -18,14 +18,15 @@ from tkinter import filedialog, messagebox, ttk
 from copy import deepcopy
 
 # ── DPI awareness (Windows) ───────────────────
-# Sin esto Windows escala la ventana borrosa en pantallas HiDPI.
+# PerMonitorV2 (modo 2) rompe tkinter; el modo correcto es System-aware (1).
+# Además hay que decirle a tkinter su factor de escala real (ver FlashcardApp.__init__).
 if sys.platform == "win32":
     try:
         import ctypes
-        ctypes.windll.shcore.SetProcessDpiAwareness(2)  # Per-Monitor DPI aware
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)  # System DPI aware
     except Exception:
         try:
-            ctypes.windll.user32.SetProcessDPIAware()   # Fallback Win7+
+            ctypes.windll.user32.SetProcessDPIAware()
         except Exception:
             pass
 
@@ -300,6 +301,14 @@ class FlashcardApp(tk.Tk):
         self.minsize(640, 520)
         self.geometry("740x580")
 
+        # Forzar escala correcta en pantallas HiDPI (Windows)
+        # Sin esto tkinter renderiza a 96 DPI y Windows lo escala borroso.
+        try:
+            dpi = self.winfo_fpixels('1i')          # DPI real del monitor
+            self.tk.call('tk', 'scaling', dpi / 72.0)
+        except Exception:
+            pass
+
         self.cards: list[dict] = []
         self.index: int = 0
         self.answer_visible: bool = False
@@ -385,7 +394,7 @@ class FlashcardApp(tk.Tk):
 
         self.q_display = tk.Text(
             self.card_frame,
-            bg=CARD_BG, fg=TEXT,
+            bg=CARD_BG, fg=TEXT, 
             font=FONT_CARD_Q,
             relief="flat", bd=0, highlightthickness=0,
             wrap="word", cursor="arrow",
