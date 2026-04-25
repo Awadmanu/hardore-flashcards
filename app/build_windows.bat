@@ -23,7 +23,7 @@ if errorlevel 1 (
 )
 
 :: Buscar el script en la misma carpeta que este .bat
-set SCRIPT=%~dp0claude_flashcards_v2.py
+set SCRIPT=%~dp0claude_image_flashcards.py
 if not exist "%SCRIPT%" (
     echo [ERROR] No se encontro claude_flashcards_v2.py en la misma carpeta.
     echo         Pon build_windows.bat y claude_flashcards_v2.py juntos.
