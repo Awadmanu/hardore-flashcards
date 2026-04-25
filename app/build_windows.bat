@@ -1,7 +1,7 @@
 @echo off
 echo.
 echo =============================================
-echo   Flashcard Reviewer — Build para Windows
+echo   Flashcard Reviewer - Build para Windows
 echo =============================================
 echo.
 
