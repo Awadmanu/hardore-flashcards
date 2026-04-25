@@ -25,8 +25,7 @@ if errorlevel 1 (
 :: Buscar el script en la misma carpeta que este .bat
 set SCRIPT=%~dp0claude_image_flashcards.py
 if not exist "%SCRIPT%" (
-    echo [ERROR] No se encontro claude_flashcards_v2.py en la misma carpeta.
-    echo         Pon build_windows.bat y claude_flashcards_v2.py juntos.
+    echo [ERROR] No se encontro claude_image_flashcards.py en la misma carpeta.
     pause
     exit /b 1
 )
@@ -41,9 +40,16 @@ if exist "%~dp0icon.ico" (
     echo    Para usar uno: python make_icon.py tu_imagen.png -o icon.ico
 )
 
+:: Manifest DPI (obligatorio para pantallas HiDPI)
+set MANIFEST_FLAG=
+if exist "%~dp0app.manifest" (
+    set MANIFEST_FLAG=--manifest "%~dp0app.manifest"
+    echo    Manifest DPI encontrado: app.manifest
+)
+
 :: Compilar
 echo [2/3] Compilando .exe (puede tardar un minuto)...
-pyinstaller --onefile --windowed --name "Flashcard Reviewer" %ICON_FLAG% --distpath "%~dp0dist" --workpath "%~dp0build" --specpath "%~dp0build" "%SCRIPT%"
+pyinstaller --onefile --windowed --name "Flashcard Reviewer" %ICON_FLAG% %MANIFEST_FLAG% --distpath "%~dp0dist" --workpath "%~dp0build" --specpath "%~dp0build" "%SCRIPT%"
 if errorlevel 1 (
     echo [ERROR] Fallo al compilar.
     pause
@@ -60,7 +66,6 @@ echo   Listo! El ejecutable esta en:
 echo   %~dp0dist\Flashcard Reviewer.exe
 echo =============================================
 echo.
-echo Puedes copiar ese .exe donde quieras y ejecutarlo con doble clic.
 echo Recuerda mantener la carpeta _media/ junto a tus CSVs.
 echo.
 pause

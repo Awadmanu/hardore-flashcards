@@ -9,12 +9,25 @@ Images: Ctrl+V en el editor pega imágenes del portapapeles.
 """
 
 import csv
+import sys
 import os
 import re
 import uuid
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from copy import deepcopy
+
+# ── DPI awareness (Windows) ───────────────────
+# Sin esto Windows escala la ventana borrosa en pantallas HiDPI.
+if sys.platform == "win32":
+    try:
+        import ctypes
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)  # Per-Monitor DPI aware
+    except Exception:
+        try:
+            ctypes.windll.user32.SetProcessDPIAware()   # Fallback Win7+
+        except Exception:
+            pass
 
 try:
     from PIL import Image, ImageTk, ImageGrab
